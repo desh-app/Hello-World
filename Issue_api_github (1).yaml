@@ -1,0 +1,381 @@
+$integration: http://ibm.com/appconnect/integration/v2/integrationFile
+integration:
+  type: api
+  trigger-interfaces:
+    trigger-interface-1:
+      triggers:
+        createIssue:
+          assembly:
+            $ref: '#/integration/assemblies/assembly-1'
+          input-context:
+            data: Issue
+          output-context:
+            data: Issue
+        addassigneeCustomactions:
+          assembly:
+            $ref: '#/integration/assemblies/assembly-2'
+          input-context:
+            data: customactions
+          output-context:
+            data: customactions
+        removeassigneeCustomactions:
+          assembly:
+            $ref: '#/integration/assemblies/assembly-3'
+          input-context:
+            data: customactions
+          output-context:
+            data: customactions
+      options:
+        resources:
+          - business-object: Issue
+            model:
+              $ref: '#/models/Issue'
+            triggers:
+              create: createIssue
+          - business-object: customactions
+            model:
+              $ref: '#/models/customactions'
+            triggers:
+              addassignee: addassigneeCustomactions
+              removeassignee: removeassigneeCustomactions
+      type: api-trigger
+  action-interfaces:
+    action-interface-1:
+      type: api-action
+      business-object: Issue
+      connector-type: github
+      account-name: hrishicloud
+      actions:
+        CREATE: {}
+    action-interface-2:
+      type: api-action
+      business-object: Issue
+      connector-type: github
+      account-name: hrishicloud
+      actions:
+        RETRIEVEALL: {}
+    action-interface-3:
+      type: api-action
+      business-object: Issue
+      connector-type: github
+      account-name: hrishicloud
+      actions:
+        UPDATEALL: {}
+    action-interface-4:
+      type: api-action
+      business-object: Issue
+      connector-type: github
+      account-name: hrishicloud
+      actions:
+        ADDASSIGNEES: {}
+    action-interface-5:
+      type: api-action
+      business-object: Issue
+      connector-type: github
+      account-name: hrishicloud
+      actions:
+        REMOVEASSIGNEES: {}
+  assemblies:
+    assembly-1:
+      assembly:
+        execute:
+          - create-action:
+              name: Github Create issue
+              target:
+                $ref: '#/integration/action-interfaces/action-interface-1'
+              map:
+                mappings:
+                  - OwnerName:
+                      template: hrishi54
+                  - RepoName:
+                      template: Github-Connector-Test
+                  - body:
+                      template: '{{$Request.Description}}'
+                  - title:
+                      template: '{{$Request.Title}}'
+                $map: http://ibm.com/appconnect/map/v1
+                input:
+                  - variable: Request
+                    $ref: '#/trigger/payload'
+                  - variable: flowDetails
+                    $ref: '#/flowDetails'
+          - retrieve-action:
+              name: Github Retrieve issues
+              target:
+                $ref: '#/integration/action-interfaces/action-interface-2'
+              filter:
+                where:
+                  and:
+                    - number: '{{$GithubCreateissue.number}}'
+                    - OwnerName: hrishi54
+                    - RepoName: Github-Connector-Test
+                input:
+                  - variable: Request
+                    $ref: '#/trigger/payload'
+                  - variable: GithubCreateissue
+                    $ref: '#/node-output/Github Create issue/response/payload'
+                  - variable: flowDetails
+                    $ref: '#/flowDetails'
+                limit: 1
+              allow-truncation: true
+              pagination-type: TOKEN
+              allow-empty-output: false
+          - update-action:
+              name: Github Update issue
+              target:
+                $ref: '#/integration/action-interfaces/action-interface-3'
+              map:
+                mappings:
+                  - OwnerName:
+                      template: hrishi54
+                  - RepoName:
+                      template: Github-Connector-Test
+                  - body:
+                      template: '{{$Request.updatedesc}}'
+                  - title:
+                      template: '{{$Request.updatetitle}}'
+                $map: http://ibm.com/appconnect/map/v1
+                input:
+                  - variable: Request
+                    $ref: '#/trigger/payload'
+                  - variable: GithubCreateissue
+                    $ref: '#/node-output/Github Create issue/response/payload'
+                  - variable: GithubRetrieveissues
+                    $ref: '#/node-output/Github Retrieve issues/response/payload'
+                  - variable: GithubRetrieveissuesMetadata
+                    $ref: '#/node-output/Github Retrieve issues/response'
+                  - variable: flowDetails
+                    $ref: '#/flowDetails'
+              filter:
+                where:
+                  and:
+                    - number: '{{$GithubCreateissue.number}}'
+                    - OwnerName: hrishi54
+                    - RepoName: Github-Connector-Test
+                input:
+                  - variable: Request
+                    $ref: '#/trigger/payload'
+                  - variable: GithubCreateissue
+                    $ref: '#/node-output/Github Create issue/response/payload'
+                  - variable: GithubRetrieveissues
+                    $ref: '#/node-output/Github Retrieve issues/response/payload'
+                  - variable: GithubRetrieveissuesMetadata
+                    $ref: '#/node-output/Github Retrieve issues/response'
+                  - variable: flowDetails
+                    $ref: '#/flowDetails'
+                limit: 1
+              allow-empty-output: false
+          - response:
+              name: response-1
+              reply-maps:
+                - title: Issue successfully created
+                  status-code: 201
+                  map:
+                    $map: http://ibm.com/appconnect/map/v1
+                    input:
+                      - variable: Request
+                        $ref: '#/trigger/payload'
+                      - variable: GithubCreateissue
+                        $ref: '#/node-output/Github Create issue/response/payload'
+                      - variable: GithubRetrieveissues
+                        $ref: '#/node-output/Github Retrieve issues/response/payload'
+                      - variable: GithubRetrieveissuesMetadata
+                        $ref: '#/node-output/Github Retrieve issues/response'
+                      - variable: GithubUpdateissue
+                        $ref: '#/node-output/Github Update issue/response/payload'
+                      - variable: GithubUpdateissueMetadata
+                        $ref: '#/node-output/Github Update issue/response'
+                      - variable: flowDetails
+                        $ref: '#/flowDetails'
+                    mappings:
+                      - Response:
+                          template: >-
+                            create issue----{{$GithubCreateissue}}----Retrieve
+                            Issue---{{$GithubRetrieveissues}}----Update
+                            Issue----{{$GithubUpdateissue}}
+                      - Title:
+                          template: '{{$Request.Title}}'
+                  input: []
+    assembly-2:
+      assembly:
+        execute:
+          - custom-action:
+              name: Github Add assignees
+              target:
+                $ref: '#/integration/action-interfaces/action-interface-4'
+              action: ADDASSIGNEES
+              map:
+                mappings:
+                  - OwnerName:
+                      template: hrishi54
+                  - RepoName:
+                      template: Github-Connector-Test
+                  - assignees:
+                      expression: '$Request.addassignee '
+                  - number:
+                      expression: '$Request.issuenumber '
+                $map: http://ibm.com/appconnect/map/v1
+                input:
+                  - variable: Request
+                    $ref: '#/trigger/payload'
+                  - variable: flowDetails
+                    $ref: '#/flowDetails'
+          - response:
+              name: response-1
+              reply-maps:
+                - title: customactions successfully add custom operation
+                  status-code: 200
+                  map:
+                    $map: http://ibm.com/appconnect/map/v1
+                    input:
+                      - variable: Request
+                        $ref: '#/trigger/payload'
+                      - variable: GithubAddassignees
+                        $ref: '#/node-output/Github Add assignees/response/payload'
+                      - variable: flowDetails
+                        $ref: '#/flowDetails'
+                    mappings:
+                      - response:
+                          template: add assignee---{{$GithubAddassignees}}
+                  input: []
+    assembly-3:
+      assembly:
+        execute:
+          - custom-action:
+              name: Github Remove assignees
+              target:
+                $ref: '#/integration/action-interfaces/action-interface-5'
+              action: REMOVEASSIGNEES
+              map:
+                mappings:
+                  - OwnerName:
+                      template: hrishi54
+                  - RepoName:
+                      template: Github-Connector-Test
+                  - assignees:
+                      expression: '$Request.removeassignee '
+                  - number:
+                      expression: '$Request.issuenumber '
+                $map: http://ibm.com/appconnect/map/v1
+                input:
+                  - variable: Request
+                    $ref: '#/trigger/payload'
+                  - variable: flowDetails
+                    $ref: '#/flowDetails'
+          - response:
+              name: response-1
+              reply-maps:
+                - title: customactions successfully add custom operation
+                  status-code: 200
+                  map:
+                    $map: http://ibm.com/appconnect/map/v1
+                    input:
+                      - variable: Request
+                        $ref: '#/trigger/payload'
+                      - variable: GithubRemoveassignees
+                        $ref: '#/node-output/Github Remove assignees/response/payload'
+                      - variable: flowDetails
+                        $ref: '#/flowDetails'
+                    mappings:
+                      - response:
+                          template: Remove assignee---{{$GithubRemoveassignees}}
+                  input: []
+  name: Issue_api_github
+models:
+  Issue:
+    name: Issue
+    properties:
+      Title:
+        required: false
+        id: false
+        type: string
+      Description:
+        required: false
+        id: false
+        type: string
+      Response:
+        required: false
+        id: true
+        type: string
+      updatetitle:
+        required: false
+        id: false
+        type: string
+      updatedesc:
+        required: false
+        id: false
+        type: string
+      issuenumber:
+        required: false
+        id: false
+        type: string
+      assignees:
+        required: false
+        id: false
+        type: string
+    plural: Issue
+    description: ' '
+    operations:
+      create: '#/integration/assemblies/assembly-1'
+    methods: {}
+  customactions:
+    name: customactions
+    properties:
+      response:
+        required: false
+        id: true
+        type: string
+      issuenumber:
+        required: false
+        id: false
+        type: number
+      addassignee:
+        required: false
+        id: false
+        type:
+          - string
+      removeassignee:
+        required: false
+        id: false
+        type:
+          - string
+    plural: customactions
+    description: ' '
+    operations:
+      addassignee: '#/integration/assemblies/assembly-2'
+      removeassignee: '#/integration/assemblies/assembly-3'
+    methods:
+      addassignee:
+        name: addassignee
+        display:
+          name: Add assignee
+        accessType: WRITE
+        accepts:
+          - arg: data
+            type: customactions
+            http:
+              source: body
+        returns:
+          arg: data
+          type: customactions
+          root: true
+        http:
+          verb: POST
+          path: /addassignee
+      removeassignee:
+        name: removeassignee
+        display:
+          name: Remove assignee
+        accessType: WRITE
+        accepts:
+          - arg: data
+            type: customactions
+            http:
+              source: body
+        returns:
+          arg: data
+          type: customactions
+          root: true
+        http:
+          verb: POST
+          path: /removeassignee
